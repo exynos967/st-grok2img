@@ -1,3 +1,4 @@
+import { getRequestHeaders } from '../../../../../script.js';
 import { parseImageResponse } from '../generation/imageResponseParser.js';
 
 const PROXY_ENDPOINT = '/api/backends/chat-completions/generate';
@@ -71,7 +72,7 @@ export async function requestGrokImage({ settings, prompt, logger }) {
   try {
     response = await fetch(PROXY_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRequestHeaders(),
       body: JSON.stringify(payload),
       signal: controller.signal
     });
