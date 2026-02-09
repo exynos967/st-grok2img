@@ -1,9 +1,25 @@
 import { DEFAULT_PROMPT_PRESET_ID } from '../constants.js';
 import { runtimeState } from '../state.js';
 import { getSettings, sanitizeApiKey, updateSettings } from '../settingsStore.js';
+import {
+  createPromptPreset,
+  deletePromptPreset,
+  exportPromptPreset,
+  getActivePromptPreset,
+  importPromptPreset,
+  setActivePromptPreset
+} from '../prompt/presetManager.js';
 import { bindTabNavigation, loadTabHtml, setActiveTabButton } from './tabs.js';
 
 const SETTINGS_HTML_URL = new URL('../../settings.html', import.meta.url).toString();
+
+function notify(type, message) {
+  if (window.toastr && typeof window.toastr[type] === 'function') {
+    window.toastr[type](message);
+    return;
+  }
+  console.log(`[st-grok2img][${type}] ${message}`);
+}
 
 function setValue(input, value) {
   if (!input) return;
@@ -12,11 +28,6 @@ function setValue(input, value) {
   } else {
     input.value = value ?? '';
   }
-}
-
-function getCurrentPromptPreset(settings) {
-  const currentId = settings.prompt.activePresetId || DEFAULT_PROMPT_PRESET_ID;
-  return settings.prompt.presets[currentId] || settings.prompt.presets[DEFAULT_PROMPT_PRESET_ID];
 }
 
 function updatePromptPresetSelect(root, settings) {
@@ -124,7 +135,7 @@ function bindMainTab(root) {
 
 function bindPromptTab(root) {
   const settings = getSettings();
-  const preset = getCurrentPromptPreset(settings);
+  const preset = getActivePromptPreset(settings);
 
   updatePromptPresetSelect(root, settings);
   setValue(root.querySelector('#g2-fixed-prefix'), preset.fixedPrefix);
@@ -134,39 +145,101 @@ function bindPromptTab(root) {
 
   root.querySelector('#g2-prompt-preset-select')?.addEventListener('change', (event) => {
     updateSettings((next) => {
-      if (next.prompt.presets[event.target.value]) {
-        next.prompt.activePresetId = event.target.value;
-      }
+      setActivePromptPreset(next, event.target.value);
     });
     bindPromptTab(root);
   });
 
   root.querySelector('#g2-fixed-prefix')?.addEventListener('change', (event) => {
     updateSettings((next) => {
-      const active = getCurrentPromptPreset(next);
+      const active = getActivePromptPreset(next);
       active.fixedPrefix = event.target.value;
     });
   });
 
   root.querySelector('#g2-fixed-suffix')?.addEventListener('change', (event) => {
     updateSettings((next) => {
-      const active = getCurrentPromptPreset(next);
+      const active = getActivePromptPreset(next);
       active.fixedSuffix = event.target.value;
     });
   });
 
   root.querySelector('#g2-negative-prompt')?.addEventListener('change', (event) => {
     updateSettings((next) => {
-      const active = getCurrentPromptPreset(next);
+      const active = getActivePromptPreset(next);
       active.negativePrompt = event.target.value;
     });
   });
 
   root.querySelector('#g2-replace-rules')?.addEventListener('change', (event) => {
     updateSettings((next) => {
-      const active = getCurrentPromptPreset(next);
+      const active = getActivePromptPreset(next);
       active.replaceRulesText = event.target.value;
     });
+  });
+
+  root.querySelector('#g2-prompt-preset-save')?.addEventListener('click', () => {
+    updateSettings(() => {});
+    notify('success', '提示词预设已保存');
+  });
+
+  root.querySelector('#g2-prompt-preset-save-as')?.addEventListener('click', () => {
+    const name = window.prompt('输入新预设名称', `${preset.name}-副本`);
+    if (!name) {
+      return;
+    }
+
+    updateSettings((next) => {
+      createPromptPreset(next, name, getActivePromptPreset(next));
+    });
+    bindPromptTab(root);
+    notify('success', `已创建预设：${name}`);
+  });
+
+  root.querySelector('#g2-prompt-preset-delete')?.addEventListener('click', () => {
+    updateSettings((next) => {
+      if (!deletePromptPreset(next, next.prompt.activePresetId)) {
+        notify('warning', '至少保留一个提示词预设');
+      }
+    });
+    bindPromptTab(root);
+  });
+
+  root.querySelector('#g2-prompt-preset-export')?.addEventListener('click', () => {
+    const payload = exportPromptPreset(getSettings(), getSettings().prompt.activePresetId);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `st-grok2img-prompt-${payload.preset.id}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  });
+
+  root.querySelector('#g2-prompt-preset-import')?.addEventListener('click', () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json,application/json';
+    fileInput.onchange = async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      const text = await file.text();
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        notify('error', '预设文件不是合法 JSON');
+        return;
+      }
+
+      updateSettings((next) => {
+        const imported = importPromptPreset(next, payload);
+        notify('success', `已导入预设：${imported.name}`);
+      });
+      bindPromptTab(root);
+    };
+    fileInput.click();
   });
 }
 
