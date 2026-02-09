@@ -1,4 +1,4 @@
-import { getRequestHeaders } from '../../../../../script.js';
+import { getRequestHeaders } from '../../../../../../script.js';
 import { parseImageResponse } from '../generation/imageResponseParser.js';
 
 const PROXY_ENDPOINT = '/api/backends/chat-completions/generate';
