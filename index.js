@@ -4,6 +4,7 @@ import { mountModal, mountOpenButton } from './utils/ui/modal.js';
 import { getSettings, saveSettings } from './utils/settingsStore.js';
 import { runtimeState } from './utils/state.js';
 import { ensureDefaultWorldbookPreset } from './utils/worldbook/engine.js';
+import { createLogger } from './utils/log/logger.js';
 
 async function initializeUi() {
   if (runtimeState.uiMounted) {
@@ -20,6 +21,9 @@ async function handleAppReady() {
 
   await ensureDefaultWorldbookPreset(settings);
   saveSettings();
+
+  runtimeState.logger = createLogger(settings.log.maxItems);
+  runtimeState.logger.add('info', 'Logger initialized');
 
   runtimeState.initialized = true;
 

@@ -181,3 +181,24 @@
     min-width: 100px;
   }
 }
+
+.st-g2-log-item {
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.st-g2-log-item.level-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.st-g2-log-item.level-warning {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}

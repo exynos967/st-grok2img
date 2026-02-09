@@ -286,11 +286,12 @@ function bindWorldbookTab(root) {
 }
 
 function bindLogTab(root) {
+  const list = root.querySelector('#g2-log-list');
+  runtimeState.logger?.renderList(list);
+
   root.querySelector('#g2-log-clear')?.addEventListener('click', () => {
-    const list = root.querySelector('#g2-log-list');
-    if (list) {
-      list.innerHTML = '';
-    }
+    runtimeState.logger?.clear();
+    runtimeState.logger?.renderList(list);
   });
 }
 
