@@ -6,7 +6,11 @@ export const runtimeState = {
   activeTab: 'main',
   generationQueue: null,
   logger: null,
-  unbinders: []
+  unbinders: [],
+  actions: {
+    requestGeneration: null,
+    updateQueueInterval: null
+  }
 };
 
 export function registerCleanup(handler) {

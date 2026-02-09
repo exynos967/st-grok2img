@@ -1,10 +1,155 @@
 import { eventSource, event_types } from '../../../../script.js';
-import { EXTENSION_NAME } from './utils/constants.js';
+import { EXTENSION_EVENTS, EXTENSION_NAME } from './utils/constants.js';
 import { mountModal, mountOpenButton } from './utils/ui/modal.js';
 import { getSettings, saveSettings } from './utils/settingsStore.js';
 import { runtimeState } from './utils/state.js';
-import { ensureDefaultWorldbookPreset } from './utils/worldbook/engine.js';
+import { ensureDefaultWorldbookPreset, processWorldbookForPrompt } from './utils/worldbook/engine.js';
 import { createLogger } from './utils/log/logger.js';
+import { getActivePromptPreset } from './utils/prompt/presetManager.js';
+import { buildPromptFromPreset } from './utils/prompt/templateEngine.js';
+import { requestGrokImage } from './utils/api/grokProxyClient.js';
+import { createGenerationQueue } from './utils/generation/queue.js';
+import { extractTaggedPrompts } from './utils/generation/triggerParser.js';
+import { insertGeneratedImageMessage } from './utils/generation/chatInserter.js';
+
+function emitEvent(eventName, payload) {
+  try {
+    eventSource.emit(eventName, payload);
+  } catch {
+    // ignore event delivery failures
+  }
+}
+
+async function executeGenerationTask(task) {
+  const settings = getSettings();
+  if (!settings.enabled) {
+    throw new Error('插件已禁用');
+  }
+
+  const sourcePrompt = String(task.rawPrompt || '').trim();
+  if (!sourcePrompt) {
+    throw new Error('提示词为空');
+  }
+
+  const activePreset = getActivePromptPreset(settings);
+  const worldbookResult = processWorldbookForPrompt(settings, sourcePrompt);
+  const finalPrompt = buildPromptFromPreset(sourcePrompt, activePreset, worldbookResult.worldbookContent);
+
+  if (!finalPrompt) {
+    throw new Error('最终提示词为空');
+  }
+
+  const eventPayload = {
+    source: task.source,
+    rawPrompt: sourcePrompt,
+    finalPrompt,
+    matchedWorldbook: worldbookResult.matchedEntries
+  };
+
+  runtimeState.logger?.add('info', 'Generation started', {
+    source: task.source,
+    promptLength: finalPrompt.length,
+    worldbookMatches: worldbookResult.matchedEntries.length
+  });
+
+  emitEvent(EXTENSION_EVENTS.GENERATION_STARTED, eventPayload);
+
+  try {
+    const response = await requestGrokImage({
+      settings,
+      prompt: finalPrompt,
+      logger: runtimeState.logger
+    });
+
+    await insertGeneratedImageMessage({
+      imageUrl: response.image.imageUrl,
+      prompt: sourcePrompt,
+      taggedText: task.taggedText,
+      insertOriginalText: settings.ui.insertOriginalText
+    });
+
+    runtimeState.logger?.add('info', 'Generation succeeded', {
+      source: task.source,
+      imageSource: response.image.sourceType
+    });
+
+    emitEvent(EXTENSION_EVENTS.GENERATION_SUCCEEDED, {
+      ...eventPayload,
+      imageSource: response.image.sourceType
+    });
+
+    return response;
+  } catch (error) {
+    runtimeState.logger?.add('error', 'Generation failed', {
+      source: task.source,
+      message: error.message
+    });
+
+    emitEvent(EXTENSION_EVENTS.GENERATION_FAILED, {
+      ...eventPayload,
+      error: error.message
+    });
+
+    throw error;
+  }
+}
+
+function enqueueGenerationTask(task) {
+  if (!runtimeState.generationQueue) {
+    throw new Error('生图队列尚未初始化');
+  }
+  return runtimeState.generationQueue.enqueue(() => executeGenerationTask(task), {
+    source: task.source
+  });
+}
+
+function getLatestUserMessageText() {
+  const context = SillyTavern.getContext();
+  const message = context?.chat?.[context.chat.length - 1];
+  if (!message) {
+    return '';
+  }
+  return String(message.mes || message.message || '');
+}
+
+function handleAutoTriggerEvent() {
+  const settings = getSettings();
+  if (!settings.enabled || !settings.trigger.autoGenerate) {
+    return;
+  }
+
+  const latestMessageText = getLatestUserMessageText();
+  const promptItems = extractTaggedPrompts(
+    latestMessageText,
+    settings.trigger.startTag,
+    settings.trigger.endTag
+  );
+
+  if (promptItems.length === 0) {
+    return;
+  }
+
+  runtimeState.logger?.add('info', 'Auto trigger matched', {
+    count: promptItems.length
+  });
+
+  for (const item of promptItems) {
+    enqueueGenerationTask({
+      rawPrompt: item.prompt,
+      source: 'auto',
+      taggedText: item.taggedText
+    }).catch((error) => {
+      console.error(`[${EXTENSION_NAME}] auto trigger task failed`, error);
+    });
+  }
+}
+
+function registerActions() {
+  runtimeState.actions.requestGeneration = (task) => enqueueGenerationTask(task);
+  runtimeState.actions.updateQueueInterval = (nextIntervalMs) => {
+    runtimeState.generationQueue?.setIntervalMs(nextIntervalMs);
+  };
+}
 
 async function initializeUi() {
   if (runtimeState.uiMounted) {
@@ -24,6 +169,15 @@ async function handleAppReady() {
 
   runtimeState.logger = createLogger(settings.log.maxItems);
   runtimeState.logger.add('info', 'Logger initialized');
+
+  runtimeState.generationQueue = createGenerationQueue({
+    intervalMs: settings.trigger.generationIntervalMs,
+    logger: runtimeState.logger
+  });
+
+  registerActions();
+
+  eventSource.on(event_types.MESSAGE_SENT, handleAutoTriggerEvent);
 
   runtimeState.initialized = true;
 

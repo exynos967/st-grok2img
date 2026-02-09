@@ -123,6 +123,7 @@ function bindMainTab(root) {
       const parsed = Number.parseInt(event.target.value, 10);
       next.trigger.generationIntervalMs = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
       event.target.value = String(next.trigger.generationIntervalMs);
+      runtimeState.actions.updateQueueInterval?.(next.trigger.generationIntervalMs);
     });
   });
 
@@ -130,6 +131,36 @@ function bindMainTab(root) {
     updateSettings((next) => {
       next.ui.insertOriginalText = event.target.checked;
     });
+  });
+
+  root.querySelector('#g2-manual-generate')?.addEventListener('click', async () => {
+    const promptInput = root.querySelector('#g2-manual-prompt');
+    const prompt = String(promptInput?.value || '').trim();
+    if (!prompt) {
+      notify('warning', '请输入提示词');
+      return;
+    }
+
+    if (typeof runtimeState.actions.requestGeneration !== 'function') {
+      notify('error', '生图服务尚未初始化');
+      return;
+    }
+
+    const button = root.querySelector('#g2-manual-generate');
+    button.disabled = true;
+
+    try {
+      await runtimeState.actions.requestGeneration({
+        rawPrompt: prompt,
+        source: 'manual',
+        taggedText: ''
+      });
+      notify('success', '已提交生图任务');
+    } catch (error) {
+      notify('error', error.message || '生图失败');
+    } finally {
+      button.disabled = false;
+    }
   });
 }
 
