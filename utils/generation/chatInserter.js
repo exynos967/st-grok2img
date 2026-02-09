@@ -1,4 +1,4 @@
-import { reloadCurrentChat, saveChatConditional } from '../../../../../script.js';
+import { reloadCurrentChat, saveChatConditional } from '../../../../../../script.js';
 
 function buildMessageContent({ imageUrl, prompt, insertOriginalText, taggedText }) {
   const markdownImage = `![st-grok2img](${imageUrl})`;
