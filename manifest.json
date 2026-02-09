@@ -1,0 +1,12 @@
+{
+  "display_name": "st-grok2img",
+  "loading_order": 10,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "OpenCode",
+  "version": "0.1.0",
+  "homePage": "https://github.com/PLACEHOLDER/st-grok2img",
+  "auto_update": false
+}
