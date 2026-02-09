@@ -4,12 +4,14 @@ export const runtimeState = {
   modalElement: null,
   openButtonElement: null,
   activeTab: 'main',
+  logTabUnsubscribe: null,
   generationQueue: null,
   logger: null,
   unbinders: [],
   actions: {
     requestGeneration: null,
-    updateQueueInterval: null
+    updateQueueInterval: null,
+    updateLogLimit: null
   }
 };
 

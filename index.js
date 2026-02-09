@@ -2,7 +2,7 @@ import { eventSource, event_types } from '../../../../script.js';
 import { EXTENSION_EVENTS, EXTENSION_NAME } from './utils/constants.js';
 import { mountModal, mountOpenButton } from './utils/ui/modal.js';
 import { getSettings, saveSettings } from './utils/settingsStore.js';
-import { runtimeState } from './utils/state.js';
+import { registerCleanup, runtimeState } from './utils/state.js';
 import { ensureDefaultWorldbookPreset, processWorldbookForPrompt } from './utils/worldbook/engine.js';
 import { createLogger } from './utils/log/logger.js';
 import { getActivePromptPreset } from './utils/prompt/presetManager.js';
@@ -18,6 +18,18 @@ function emitEvent(eventName, payload) {
   } catch {
     // ignore event delivery failures
   }
+}
+
+function getErrorMessage(error, fallback = '未知错误') {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === 'string' && error) {
+    return error;
+  }
+
+  return fallback;
 }
 
 async function executeGenerationTask(task) {
@@ -80,17 +92,19 @@ async function executeGenerationTask(task) {
 
     return response;
   } catch (error) {
+    const message = getErrorMessage(error);
+
     runtimeState.logger?.add('error', 'Generation failed', {
       source: task.source,
-      message: error.message
+      message
     });
 
     emitEvent(EXTENSION_EVENTS.GENERATION_FAILED, {
       ...eventPayload,
-      error: error.message
+      error: message
     });
 
-    throw error;
+    throw new Error(message);
   }
 }
 
@@ -98,6 +112,7 @@ function enqueueGenerationTask(task) {
   if (!runtimeState.generationQueue) {
     throw new Error('生图队列尚未初始化');
   }
+
   return runtimeState.generationQueue.enqueue(() => executeGenerationTask(task), {
     source: task.source
   });
@@ -105,11 +120,16 @@ function enqueueGenerationTask(task) {
 
 function getLatestUserMessageText() {
   const context = SillyTavern.getContext();
-  const message = context?.chat?.[context.chat.length - 1];
-  if (!message) {
+  if (!context?.chat?.length) {
     return '';
   }
-  return String(message.mes || message.message || '');
+
+  const message = context.chat[context.chat.length - 1];
+  if (message?.is_user === false) {
+    return '';
+  }
+
+  return String(message.mes || message.message || '').trim();
 }
 
 function handleAutoTriggerEvent() {
@@ -119,6 +139,10 @@ function handleAutoTriggerEvent() {
   }
 
   const latestMessageText = getLatestUserMessageText();
+  if (!latestMessageText) {
+    return;
+  }
+
   const promptItems = extractTaggedPrompts(
     latestMessageText,
     settings.trigger.startTag,
@@ -139,6 +163,9 @@ function handleAutoTriggerEvent() {
       source: 'auto',
       taggedText: item.taggedText
     }).catch((error) => {
+      runtimeState.logger?.add('error', 'Auto trigger task failed', {
+        message: getErrorMessage(error)
+      });
       console.error(`[${EXTENSION_NAME}] auto trigger task failed`, error);
     });
   }
@@ -148,6 +175,9 @@ function registerActions() {
   runtimeState.actions.requestGeneration = (task) => enqueueGenerationTask(task);
   runtimeState.actions.updateQueueInterval = (nextIntervalMs) => {
     runtimeState.generationQueue?.setIntervalMs(nextIntervalMs);
+  };
+  runtimeState.actions.updateLogLimit = (nextLimit) => {
+    runtimeState.logger?.setMaxItems(nextLimit);
   };
 }
 
@@ -161,7 +191,38 @@ async function initializeUi() {
   runtimeState.uiMounted = true;
 }
 
+function registerEventCleanup(eventName, listener) {
+  registerCleanup(() => {
+    if (typeof eventSource.off === 'function') {
+      eventSource.off(eventName, listener);
+      return;
+    }
+
+    if (typeof eventSource.removeListener === 'function') {
+      eventSource.removeListener(eventName, listener);
+    }
+  });
+}
+
+function registerRuntimeCleanup() {
+  registerCleanup(() => {
+    runtimeState.logTabUnsubscribe?.();
+    runtimeState.logTabUnsubscribe = null;
+
+    runtimeState.generationQueue?.clear();
+    runtimeState.generationQueue = null;
+
+    runtimeState.actions.requestGeneration = null;
+    runtimeState.actions.updateQueueInterval = null;
+    runtimeState.actions.updateLogLimit = null;
+  });
+}
+
 async function handleAppReady() {
+  if (runtimeState.initialized) {
+    return;
+  }
+
   const settings = getSettings();
 
   await ensureDefaultWorldbookPreset(settings);
@@ -176,8 +237,10 @@ async function handleAppReady() {
   });
 
   registerActions();
+  registerRuntimeCleanup();
 
   eventSource.on(event_types.MESSAGE_SENT, handleAutoTriggerEvent);
+  registerEventCleanup(event_types.MESSAGE_SENT, handleAutoTriggerEvent);
 
   runtimeState.initialized = true;
 
