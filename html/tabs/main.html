@@ -1,0 +1,20 @@
+<div class="st-g2-section">
+  <h3>主设置</h3>
+  <label class="st-g2-row"><span>启用插件</span><input id="g2-enabled" type="checkbox" /></label>
+  <label class="st-g2-field"><span>API 地址</span><input id="g2-api-base-url" type="text" placeholder="http://127.0.0.1:8100" /></label>
+  <label class="st-g2-field"><span>API Key</span><input id="g2-api-key" type="password" placeholder="支持粘贴 Bearer xxx" /></label>
+  <label class="st-g2-field"><span>模型</span><input id="g2-api-model" type="text" placeholder="grok-imagine-1.0" /></label>
+</div>
+<div class="st-g2-section">
+  <h3>触发</h3>
+  <label class="st-g2-row"><span>自动触发</span><input id="g2-trigger-auto" type="checkbox" /></label>
+  <label class="st-g2-field"><span>开始标记</span><input id="g2-start-tag" type="text" /></label>
+  <label class="st-g2-field"><span>结束标记</span><input id="g2-end-tag" type="text" /></label>
+  <label class="st-g2-field"><span>间隔毫秒</span><input id="g2-generation-interval" type="number" min="0" step="100" /></label>
+  <label class="st-g2-row"><span>插入原文标签</span><input id="g2-insert-original" type="checkbox" /></label>
+</div>
+<div class="st-g2-section">
+  <h3>手动生成</h3>
+  <textarea id="g2-manual-prompt" rows="4" placeholder="输入提示词"></textarea>
+  <button id="g2-manual-generate" type="button" class="st-g2-primary-btn">生成</button>
+</div>

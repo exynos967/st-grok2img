@@ -1,1 +1,18 @@
-<div id="st-grok2img-root"></div>
+<div id="st-grok2img-modal" class="st-g2-modal st-g2-hidden">
+  <div class="st-g2-backdrop" data-role="backdrop"></div>
+  <div class="st-g2-panel" role="dialog" aria-modal="true" aria-label="st-grok2img settings">
+    <div class="st-g2-header">
+      <h2>Grok2API 生图</h2>
+      <button type="button" class="st-g2-icon-btn" data-role="close" aria-label="close">×</button>
+    </div>
+    <div class="st-g2-layout">
+      <nav class="st-g2-sidebar">
+        <button type="button" class="st-g2-tab-btn" data-tab="main">主设置</button>
+        <button type="button" class="st-g2-tab-btn" data-tab="prompt">提示词</button>
+        <button type="button" class="st-g2-tab-btn" data-tab="worldbook">世界书</button>
+        <button type="button" class="st-g2-tab-btn" data-tab="log">日志</button>
+      </nav>
+      <section id="st-grok2img-tab-content" class="st-g2-content"></section>
+    </div>
+  </div>
+</div>

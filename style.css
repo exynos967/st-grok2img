@@ -1,1 +1,183 @@
-/* st-grok2img styles */
+.st-g2-open-btn {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 4000;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #0f766e, #0ea5a0);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.st-g2-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+}
+
+.st-g2-hidden {
+  display: none;
+}
+
+.st-g2-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.st-g2-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1000px, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.st-g2-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.st-g2-icon-btn {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.st-g2-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 0;
+  flex: 1;
+}
+
+.st-g2-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: #e2e8f0;
+}
+
+.st-g2-tab-btn {
+  border: none;
+  border-radius: 8px;
+  background: #cbd5e1;
+  color: #0f172a;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.st-g2-tab-btn.is-active {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.st-g2-content {
+  overflow: auto;
+  padding: 14px;
+}
+
+.st-g2-section {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #ffffff;
+}
+
+.st-g2-field,
+.st-g2-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.st-g2-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.st-g2-field input,
+.st-g2-field textarea,
+.st-g2-inline select,
+.st-g2-inline button,
+.st-g2-field select,
+.st-g2-field button,
+.st-g2-section > textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.st-g2-inline {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.st-g2-inline > * {
+  flex: 1 1 120px;
+}
+
+.st-g2-primary-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #0f766e;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.st-g2-danger-btn {
+  background: #b91c1c;
+  color: #ffffff;
+}
+
+.st-g2-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .st-g2-panel {
+    width: 96vw;
+    max-height: 94vh;
+  }
+
+  .st-g2-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .st-g2-sidebar {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .st-g2-tab-btn {
+    min-width: 100px;
+  }
+}
